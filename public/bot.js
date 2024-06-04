@@ -2,67 +2,67 @@ const recognition = new webkitSpeechRecognition();
 recognition.continuous = true;
 recognition.interimResults = true;
 
-let isSpeaking = false;
+recognition.onstart = () => {
+    console.log('Speech recognition started');
+};
+
+recognition.onerror = (event) => {
+    console.error('Speech recognition error:', event.error);
+};
+
+recognition.onend = () => {
+    console.log('Speech recognition ended');
+};
 
 recognition.onresult = async (event) => {
-    if (isSpeaking) {
-        console.log("Ignored input while speaking");
-        return;
-    }
-
+    console.log('Speech recognition result received');
     let transcript = '';
     for (let i = event.resultIndex; i < event.results.length; ++i) {
         transcript += event.results[i][0].transcript;
     }
-    console.log(`Transcript: ${transcript}`);
     document.getElementById('transcript').innerText = `You said: ${transcript}`;
     const aiResponse = await getAIResponse(transcript);
-    console.log(`AI Response: ${aiResponse}`);
     document.getElementById('response').innerText = `Bot says: ${aiResponse}`;
     speak(aiResponse);
 };
 
-recognition.onend = () => {
-    if (!isSpeaking) {
-        console.log("Recognition ended, restarting...");
-        startRecognition();
-    }
-};
-
 function startRecognition() {
-    console.log("Starting recognition");
+    console.log('Starting recognition');
     recognition.start();
 }
 
 async function getAIResponse(userInput) {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-
-        },
-        body: JSON.stringify({
-            model: "gpt-4o",
-            messages: [{ role: "user", content: userInput }]
-        })
-    });
-    const data = await response.json();
-    return data.choices[0].message.content;
+    try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4",
+                messages: [{ role: "user", content: userInput }]
+            })
+        });
+        const data = await response.json();
+        return data.choices[0].message.content;
+    } catch (error) {
+        console.error('Error fetching AI response:', error);
+    }
 }
 
 function speak(text) {
-    isSpeaking = true;
-    recognition.stop();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.onend = () => {
-        isSpeaking = false;
-        console.log("Finished speaking, restarting recognition...");
+        console.log('Speech synthesis ended');
         setTimeout(() => {
             startRecognition();
-        }, 1000); // Adjust the delay time as needed
+        }, 1000); // Adjust the delay as needed
     };
-    console.log(`Speaking: ${text}`);
     speechSynthesis.speak(utterance);
+    recognition.stop();
 }
-Function user input
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelector('button').addEventListener('click', startRecognition);
+});
