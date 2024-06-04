@@ -1,0 +1,66 @@
+const recognition = new webkitSpeechRecognition();
+recognition.continuous = true;
+recognition.interimResults = true;
+
+let isSpeaking = false;
+
+recognition.onresult = async (event) => {
+    if (isSpeaking) {
+        console.log("Ignored input while speaking");
+        return;
+    }
+
+    let transcript = '';
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+        transcript += event.results[i][0].transcript;
+    }
+    console.log(`Transcript: ${transcript}`);
+    document.getElementById('transcript').innerText = `You said: ${transcript}`;
+    const aiResponse = await getAIResponse(transcript);
+    console.log(`AI Response: ${aiResponse}`);
+    document.getElementById('response').innerText = `Bot says: ${aiResponse}`;
+    speak(aiResponse);
+};
+
+recognition.onend = () => {
+    if (!isSpeaking) {
+        console.log("Recognition ended, restarting...");
+        startRecognition();
+    }
+};
+
+function startRecognition() {
+    console.log("Starting recognition");
+    recognition.start();
+}
+
+async function getAIResponse(userInput) {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer sk-proj-UulmbOdpI4R6l6RPOBKIT3BlbkFJ1hhXxOhODXs8GOMJk8yZ`
+        },
+        body: JSON.stringify({
+            model: "gpt-4",
+            messages: [{ role: "user", content: userInput }]
+        })
+    });
+    const data = await response.json();
+    return data.choices[0].message.content;
+}
+
+function speak(text) {
+    isSpeaking = true;
+    recognition.stop();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onend = () => {
+        isSpeaking = false;
+        console.log("Finished speaking, restarting recognition...");
+        setTimeout(() => {
+            startRecognition();
+        }, 1000); // Adjust the delay time as needed
+    };
+    console.log(`Speaking: ${text}`);
+    speechSynthesis.speak(utterance);
+}
