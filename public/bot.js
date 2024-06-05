@@ -2,6 +2,8 @@ const recognition = new webkitSpeechRecognition();
 recognition.continuous = true;
 recognition.interimResults = true;
 
+let isSpeaking = false;
+
 recognition.onstart = () => {
     console.log('Speech recognition started');
 };
@@ -12,6 +14,11 @@ recognition.onerror = (event) => {
 
 recognition.onend = () => {
     console.log('Speech recognition ended');
+    if (!isSpeaking) {
+        setTimeout(() => {
+            startRecognition();
+        }, 1000); // Adjust the delay as needed
+    }
 };
 
 recognition.onresult = async (event) => {
@@ -52,12 +59,12 @@ async function getAIResponse(userInput) {
 }
 
 function speak(text) {
+    isSpeaking = true;
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.onend = () => {
         console.log('Speech synthesis ended');
-        setTimeout(() => {
-            startRecognition();
-        }, 1000); // Adjust the delay as needed
+        isSpeaking = false;
+        recognition.start();
     };
     speechSynthesis.speak(utterance);
     recognition.stop();
